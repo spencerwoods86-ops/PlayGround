@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#142238">
+<title>Rust &amp; Rumble — Factory Escape</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23142238'/%3E%3Crect x='4' y='3' width='8' height='3' fill='%23ffcf5a'/%3E%3Crect x='3' y='6' width='10' height='7' fill='%23eab368'/%3E%3Crect x='6' y='8' width='2' height='2' fill='%23142238'/%3E%3C/svg%3E">
+<style>
+:root{color-scheme:dark;--ink:#142238;--cream:#fff0c1;--gold:#ffcf5a;--teal:#55d9c4}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0b1422;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+body{display:grid;place-items:center}
+.game-shell{position:relative;width:100vw;height:100vh;height:100dvh;background:#142238;overflow:hidden}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none}
+.hud{position:absolute;inset:0;pointer-events:none;color:var(--cream);text-shadow:2px 2px #101a2b,-1px -1px #101a2b}
+.brand{position:absolute;left:max(14px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));font-size:clamp(12px,1.5vw,20px);font-weight:1000;letter-spacing:.07em;color:#ffe7a0;line-height:1.1}
+.brand small{display:block;margin-top:5px;font-size:.6em;color:#9fd4d2;letter-spacing:.14em}
+.level-title{position:absolute;right:max(14px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));font-size:clamp(9px,1vw,14px);color:#c5d6e0;letter-spacing:.09em;padding-right:96px}
+.status{position:absolute;left:50%;top:max(12px,env(safe-area-inset-top));transform:translateX(-50%);padding:8px 14px;background:#17243ae6;border:2px solid #5b7083;border-radius:3px;font-size:clamp(9px,.92vw,13px);white-space:nowrap;box-shadow:3px 3px #101a2b;max-width:56vw;overflow:hidden;text-overflow:ellipsis}
+.restart{position:absolute;right:max(14px,env(safe-area-inset-right));top:max(46px,calc(env(safe-area-inset-top) + 34px));pointer-events:auto;background:#26384f;color:#ffe7a0;border:2px solid #aeb5a6;padding:7px 10px;border-radius:3px;font:inherit;font-size:11px;font-weight:900;cursor:pointer;letter-spacing:.05em}
+.restart:active{transform:translateY(2px);background:#3b5368}
+.hint{position:absolute;left:max(14px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));font-size:clamp(8px,.8vw,12px);color:#d5e0dc;line-height:1.6;max-width:48%;opacity:.9}
+.controls{position:absolute;inset:auto 0 0;height:92px;display:none;pointer-events:none;padding:0 max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}
+.pad,.actions{position:absolute;bottom:max(10px,env(safe-area-inset-bottom));display:flex;gap:10px;pointer-events:auto}
+.pad{left:max(10px,env(safe-area-inset-left))}
+.actions{right:max(10px,env(safe-area-inset-right));align-items:flex-end}
+.touch-btn{width:58px;height:58px;border:2px solid #d6e1d477;border-radius:14px;background:#17243ae6;color:#fff0c1;font:900 22px ui-monospace,monospace;box-shadow:0 4px #090f1a88;touch-action:none;user-select:none;-webkit-user-select:none;display:grid;place-items:center}
+.touch-btn.action{width:64px;height:54px;font-size:11px;letter-spacing:.04em;line-height:1.15}
+.touch-btn.active{transform:translateY(3px);background:#3b5b6e;box-shadow:0 1px #090f1a88}
+.overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#101a2bdc;text-align:center;color:#fff0c1;pointer-events:auto;padding:20px;z-index:5}
+.overlay.show{display:flex}
+.card{padding:clamp(20px,4vw,38px);max-width:560px;background:#23334a;border:4px solid #ffcf5a;box-shadow:8px 8px #090f1a;border-radius:4px}
+.card .kicker{color:#55d9c4;font-size:11px;letter-spacing:.2em;margin-bottom:8px}
+.card h1{margin:0 0 12px;color:#ffe7a0;font-size:clamp(24px,4vw,48px);letter-spacing:.02em;line-height:1}
+.card p{line-height:1.7;color:#c5d6e0;font-size:clamp(11px,1.2vw,14px)}
+.card button{background:#ffcf5a;color:#20283a;border:0;padding:13px 22px;font:900 14px ui-monospace,monospace;cursor:pointer;border-radius:2px;box-shadow:4px 4px #101a2b}
+.card button:active{transform:translate(2px,2px);box-shadow:2px 2px #101a2b}
+@media (pointer:coarse),(max-width:900px){
+.controls{display:block}
+.hint{display:none}
+.status{top:max(52px,calc(env(safe-area-inset-top) + 42px));max-width:86vw;font-size:10px;padding:6px 10px;white-space:normal;line-height:1.35;text-align:center}
+.level-title{display:block;left:152px;right:auto;top:max(14px,env(safe-area-inset-top));padding-right:0;font-size:9px;color:#ffe7a0}
+.brand{font-size:12px}
+.brand small{font-size:7px}
+.restart{top:max(10px,env(safe-area-inset-top));padding:5px 8px;font-size:10px}
+.touch-btn{width:54px;height:54px;font-size:19px}
+.touch-btn.action{width:58px;height:50px;font-size:10px}
+.pad,.actions{gap:7px}
+}
+@media (orientation:portrait){
+.brand small{display:none}
+.restart{top:max(10px,env(safe-area-inset-top))}
+.status{top:max(42px,calc(env(safe-area-inset-top) + 32px))}
+}
+</style>
+</head>
+<body>
+<main class="game-shell" id="shell">
+<canvas id="game" aria-label="Rust and Rumble, a physics puzzle platformer"></canvas>
+<div class="hud">
+<div class="brand">RUST <span style="color:#ffcf5a">&amp;</span> RUMBLE<small>FACTORY ESCAPE · SECTOR 01</small></div>
+<div class="level-title" id="locks">LOCKS 0 / 2</div>
+<div class="status" id="status">Find a way through the factory.</div>
+<button class="restart" id="restart">↻ RESTART</button>
+<div class="hint" id="hint">← → / A D move &nbsp;·&nbsp; SPACE jump &nbsp;·&nbsp; E lift / drop &nbsp;·&nbsp; F toss</div>
+</div>
+<div class="controls">
+<div class="pad"><button class="touch-btn" data-key="left" aria-label="Move left">◀</button><button class="touch-btn" data-key="right" aria-label="Move right">▶</button></div>
+<div class="actions"><button class="touch-btn" data-key="jump" aria-label="Jump">JUMP</button><button class="touch-btn action" data-key="interact" aria-label="Lift or drop">LIFT</button><button class="touch-btn action" data-key="throw" aria-label="Toss">TOSS</button></div>
+</div>
+<div class="overlay" id="overlay"><div class="card"><div class="kicker">SECTOR 01 COMPLETE</div><h1>FACTORY CLEARED!</h1><p>You turned scrap into a way out.<br>Not bad for a day’s work.</p><button id="again">PLAY AGAIN</button></div></div>
+</main>
+<script src="game.js"></script>
+</body>
+</html>
